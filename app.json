@@ -1,0 +1,28 @@
+{
+  "name": "exampleblog",
+  "description": "crawl https://exampleblog.munew.io/",
+  "keywords": [
+    "web crawling",
+    "web scraping",
+    "crawl",
+    "scrape",
+    "automation",
+    "nodejs"
+  ],
+  "website": "https://munew.io",
+  "logo": "https://raw.githubusercontent.com/munew/dia-electron/master/assets/icons/munew512.png",
+  "env": {
+    "MUNEW_BASE_URL": {
+      "description": "Your Munew Application's base url. Example: https://munew.herokuapp.com"
+    },
+    "AS_GLOBAL_ID": {
+      "description": "Your Analyst Application Global ID. https://docs.munew.io/how-tos/how-to-set-an-analyst-service-global_id",
+    }
+  },
+  "success_url": "/",
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}

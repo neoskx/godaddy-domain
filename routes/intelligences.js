@@ -20,7 +20,7 @@ function sendToMunewEngine(intelligences) {
     //**********************************
     // Change to correct Munew Engine URL
     // https://docs.munew.io/how-tos/how-to-get-munew-port-number-in-desktop-application
-    baseURL: "http://localhost:9099",
+    baseURL: process.env.MUNEW_BASE_URL||"http://localhost:9099",
     url: "/apis/intelligences",
     method: "POST",
     data: intelligences
@@ -45,8 +45,7 @@ function generateIntelligence(url, priority, metadata) {
       // YOU MUST DO 2
       //**********************************
       // change to your Analyst Service Global ID
-      globalId:
-        "c29pOjoxNTgxNzM5MzUzNTc1OjpjNTFiODZlNS1iMTQ5LTRhYmItYTA5YS0xZmY5NDRiMWVmYzY="
+      globalId: process.env.AS_GLOBAL_ID||"c29pOjoxNTgxNzM5MzUzNTc1OjpjNTFiODZlNS1iMTQ5LTRhYmItYTA5YS0xZmY5NDRiMWVmYzY="
     },
     priority: priority || 100,
     metadata: metadata,
