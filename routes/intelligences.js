@@ -1,4 +1,5 @@
 var express = require("express");
+const _ = require('lodash');
 var router = express.Router();
 
 //================================
@@ -70,7 +71,38 @@ function functionCode(resolve, reject, intelligence, axios) {
         };
         if (domainResultStr[1] == " available") {
           data.available = true;
+          data.price = document.querySelector('.price-block .ds-dpp-price').innerText&&document.querySelector(".price-block .ds-dpp-price").innerText;
         }
+        // send data back to AS
+        resolve({
+          url: window.location.href,
+          data: {
+            contentType: "JSON",
+            content: data,
+          },
+        });
+      }
+    }, 1 * 1000);
+  } catch (err) {
+    reject(intelligence);
+  }
+}
+
+function functionEstimatedValue(resolve, reject, intelligence, axios) {
+  try {
+    let intervalHandler = setInterval(() => {
+      let domainResult = document.querySelector("span.dpp-price.price");
+      if (domainResult) {
+        clearInterval(intervalHandler);
+        // let domain = document.querySelector(
+        //   ".exact-domain-result .d-block.wrap-text"
+        // ).innerText;
+        let estimatedValue = domainResult.innerText || "";
+        let data = {
+          domain: intelligence.metadata.domain,
+          price: intelligence.metadata.price,
+          value: estimatedValue,
+        };
         // send data back to AS
         resolve({
           url: window.location.href,
@@ -95,19 +127,21 @@ router.get("/init", function (req, res, next) {
     console.log(word);
     needCollectIntelligences.push(
       generateIntelligence(
-        `https://www.godaddy.com/domainsearch/find?segment=repeat&isc=cjc1off30&checkAvail=1&tmskey=&domainToCheck=bit${word}.com`,
+        `https://www.godaddy.com/domainsearch/find?segment=repeat&isc=cjc1off30&checkAvail=1&tmskey=&domainToCheck=bit${_.trim(word)}.com`,
         1,
         {
           script: functionCode.toString(),
+          type: "queryAvailable",
         }
       )
     );
     needCollectIntelligences.push(
       generateIntelligence(
-        `https://www.godaddy.com/domainsearch/find?segment=repeat&isc=cjc1off30&checkAvail=1&tmskey=&domainToCheck=bit${word}.ai`,
+        `https://www.godaddy.com/domainsearch/find?segment=repeat&isc=cjc1off30&checkAvail=1&tmskey=&domainToCheck=bit${_.trim(word)}.ai`,
         1,
         {
           script: functionCode.toString(),
+          type: "queryAvailable",
         }
       )
     );
@@ -122,17 +156,18 @@ router.get("/init", function (req, res, next) {
     }
 
     let intelligences = needCollectIntelligences.splice(0, 100);
+    // console.log(intelligences);
     sendToMunewEngine(intelligences)
       .then((result) => {
         console.log(result.data);
       })
       .catch((err) => {
-        // console.error("sendToMunewEngine fail: ", err);
+        console.error("sendToMunewEngine fail: ", err);
       });
   }, 5 * 1000);
 
   res.json({
-    total: words.length*2
+    total: words.length * 2,
   });
 });
 
@@ -148,17 +183,34 @@ router.post("/", function (req, res, next) {
 
     for (let i = 0; i < collectedIntelligences.length; i++) {
       let item = collectedIntelligences[i];
-      // req.body - https://docs.munew.io/api/munew-engine-restful-api#request-body-array-item-schema
-      let data = item.dataset.data.content;
-      console.log("received data: ", data);
-      collectedData.push(data);
+
+      if (item.metadata.type === "queryAvailable") {
+        let data = item.dataset.data.content;
+        if (data.available) {
+          needCollectIntelligences.push(
+            generateIntelligence(
+              `https://www.godaddy.com/domain-value-appraisal/appraisal/?isc=goodba003&checkAvail=1&tmskey=&domainToCheck=${_.trim(data.domain)}`,
+              2,
+              {
+                script: functionEstimatedValue.toString(),
+                domain: _.trim(data.domain),
+                price: _.trim(data.price),
+              }
+            )
+          );
+        }
+      } else {
+        collectedData.push(item.dataset.data.content);
+      }
     }
     //------------------------------------------------------------------------------------------
     // Add more intelligences to Munew
     if (needCollectIntelligences.length) {
+      // console.log("==============needCollectIntelligences");
+      // console.log(needCollectIntelligences);
       sendToMunewEngine(needCollectIntelligences)
         .then((result) => {
-          console.log("sendToMunewEngine successful");
+          console.log(result.data);
         })
         .catch((err) => {
           console.error("sendToMunewEngine fail: ", err);
