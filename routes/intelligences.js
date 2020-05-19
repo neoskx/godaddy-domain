@@ -5,7 +5,7 @@ var router = express.Router();
 // Axios used to send HTTP Request
 const axios = require("axios");
 const fs = require("fs-extra");
-const cheerio = require("cheerio");
+const txtToJSON = require("txt-file-to-json");
 const path = require("path");
 
 /**
@@ -20,10 +20,10 @@ function sendToMunewEngine(intelligences) {
     //**********************************
     // Change to correct Munew Engine URL
     // https://docs.munew.io/how-tos/how-to-get-munew-port-number-in-desktop-application
-    baseURL: process.env.MUNEW_BASE_URL||"http://localhost:9099",
+    baseURL: process.env.MUNEW_BASE_URL || "http://localhost:9099",
     url: "/apis/intelligences",
     method: "POST",
-    data: intelligences
+    data: intelligences,
   };
 
   return axios.request(reqConfig);
@@ -45,39 +45,102 @@ function generateIntelligence(url, priority, metadata) {
       // YOU MUST DO 2
       //**********************************
       // change to your Analyst Service Global ID
-      globalId: process.env.AS_GLOBAL_ID||"c29pOjoxNTgxNzM5MzUzNTc1OjpjNTFiODZlNS1iMTQ5LTRhYmItYTA5YS0xZmY5NDRiMWVmYzY="
+      globalId:
+        process.env.GLOBAL_ID ||
+        "c29pOjoxNTgyNDA5MTYzMTYyOjplNTFiYzYyMS1iMWFhLTQ1MTMtYTIxYi1lMTNmZGIxZDAwYjY=",
     },
     priority: priority || 100,
+    suitableAgents: ["HEADLESSBROWSER", "BROWSEREXTENSION"],
     metadata: metadata,
-    url: url
+    url: url,
   };
 }
 
-/* Analyst Service - GET /apis/intelligences/init */
-router.get("/init", function(req, res, next) {
-  let needCollectIntelligences = [];
+function functionCode(resolve, reject, intelligence, axios) {
+  try {
+    let intervalHandler = setInterval(() => {
+      let domainResult = document.querySelector("span.ds-domain-name-text");
+      if (domainResult) {
+        clearInterval(intervalHandler);
+        let domainResultStr = domainResult.innerText || "";
+        domainResultStr = domainResultStr.split("is") || [];
+        let data = {
+          domain: domainResultStr[0],
+          available: false,
+        };
+        if (domainResultStr[1] == " available") {
+          data.available = true;
+        }
+        // send data back to AS
+        resolve({
+          url: window.location.href,
+          data: {
+            contentType: "JSON",
+            content: data,
+          },
+        });
+      }
+    }, 1 * 1000);
+  } catch (err) {
+    reject(intelligence);
+  }
+}
 
+/* Analyst Service - GET /apis/intelligences/init */
+router.get("/init", function (req, res, next) {
+  let needCollectIntelligences = [];
+  const words = txtToJSON({ filePath: path.join(__dirname, "./words.txt") });
+  words.forEach((word) => {
+    word = word[Object.keys(word)[0]];
+    console.log(word);
+    needCollectIntelligences.push(
+      generateIntelligence(
+        `https://www.godaddy.com/domainsearch/find?segment=repeat&isc=cjc1off30&checkAvail=1&tmskey=&domainToCheck=bit${word}.com`,
+        1,
+        {
+          script: functionCode.toString(),
+        }
+      )
+    );
+    needCollectIntelligences.push(
+      generateIntelligence(
+        `https://www.godaddy.com/domainsearch/find?segment=repeat&isc=cjc1off30&checkAvail=1&tmskey=&domainToCheck=bit${word}.ai`,
+        1,
+        {
+          script: functionCode.toString(),
+        }
+      )
+    );
+  });
   // because we have two kind pages, so to distinguish which page if currently intelligence for, we add a **type** property in metadata.
   // we want **bloglist** page to be crawled first, so set priority to 1
-  needCollectIntelligences.push(
-    generateIntelligence("http://exampleblog.munew.io/", 1, {
-      type: "bloglist"
-    })
-  );
-  sendToMunewEngine(needCollectIntelligences)
-    .then(result => {
-      res.json(result.data);
-    })
-    .catch(err => {
-      console.error("sendToMunewEngine fail: ", err);
-      res.status(500).end();
-    });
+
+  let sendIntervalHandler = setInterval(() => {
+    // no more intelligences
+    if (!needCollectIntelligences.length) {
+      clearInterval(sendIntervalHandler);
+    }
+
+    let intelligences = needCollectIntelligences.splice(0, 100);
+    sendToMunewEngine(intelligences)
+      .then((result) => {
+        console.log(result.data);
+      })
+      .catch((err) => {
+        // console.error("sendToMunewEngine fail: ", err);
+      });
+  }, 5 * 1000);
+
+  res.json({
+    total: words.length*2
+  });
 });
 
 /* Analyst Service - POST /apis/intelligences */
-router.post("/", function(req, res, next) {
+router.post("/", function (req, res, next) {
   try {
     let collectedIntelligences = req.body;
+    // console.log("receive data: ", collectedIntelligences);
     // Intelligences that need collected by Agent
     let needCollectIntelligences = [];
     // Collected data
@@ -87,55 +150,17 @@ router.post("/", function(req, res, next) {
       let item = collectedIntelligences[i];
       // req.body - https://docs.munew.io/api/munew-engine-restful-api#request-body-array-item-schema
       let data = item.dataset.data.content;
-
-      // You can find how to use cheerio from https://cheerio.js.org/
-      // cheerio: Fast, flexible & lean implementation of core jQuery designed specifically for the server.
-      let $ = cheerio.load(data);
-
-      let targetBaseURL = "http://exampleblog.munew.io/";
-      if (item.metadata.type == "bloglist") {
-        // get all blogs url in blog list page
-        let blogUrls = $("div.post-preview a");
-        for (let i = 0; i < blogUrls.length; i++) {
-          let $blog = blogUrls[i];
-          $blog = $($blog);
-          let url = new URL($blog.attr("href"), targetBaseURL).toString();
-          needCollectIntelligences.push(
-            generateIntelligence(url, 2, {
-              type: "blog"
-            })
-          );
-        }
-        let nextUrl = $("ul.pager li.next a").attr("href");
-        if (nextUrl) {
-          nextUrl = new URL(nextUrl, targetBaseURL).toString();
-          needCollectIntelligences.push(
-            generateIntelligence(nextUrl, 1, {
-              type: "bloglist"
-            })
-          );
-        }
-      } else if (item.metadata.type == "blog") {
-        collectedData.push({
-          title: $("div.post-heading h1").text(),
-          author: $("div.post-heading p.meta span.author").text(),
-          date: $("div.post-heading p.meta span.date").text(),
-          content: $("div.post-container div.post-content").text(),
-          url: item.dataset.url
-        });
-      } else {
-        console.error("unknown type");
-      }
+      console.log("received data: ", data);
+      collectedData.push(data);
     }
-
     //------------------------------------------------------------------------------------------
     // Add more intelligences to Munew
     if (needCollectIntelligences.length) {
       sendToMunewEngine(needCollectIntelligences)
-        .then(result => {
+        .then((result) => {
           console.log("sendToMunewEngine successful");
         })
-        .catch(err => {
+        .catch((err) => {
           console.error("sendToMunewEngine fail: ", err);
         });
     }
@@ -155,7 +180,7 @@ router.post("/", function(req, res, next) {
     // response back 200
     res.status(200).end();
   } catch (err) {
-    // when you received intelligences, you should return 200. 
+    // when you received intelligences, you should return 200.
     res.status(200).end();
   }
 });
