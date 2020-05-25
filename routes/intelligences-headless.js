@@ -1,5 +1,5 @@
 var express = require("express");
-const _ = require("lodash");
+const _ = require('lodash');
 var router = express.Router();
 
 //================================
@@ -51,43 +51,98 @@ function generateIntelligence(url, priority, metadata) {
         "c29pOjoxNTgyNDA5MTYzMTYyOjplNTFiYzYyMS1iMWFhLTQ1MTMtYTIxYi1lMTNmZGIxZDAwYjY=",
     },
     priority: priority || 100,
-    suitableAgents: ["SERVICE"],
+    suitableAgents: ["HEADLESSBROWSER", "BROWSEREXTENSION"],
     metadata: metadata,
     url: url,
   };
 }
 
+function functionCode(resolve, reject, intelligence, axios) {
+  try {
+    let intervalHandler = setInterval(() => {
+      let domainResult = document.querySelector("span.ds-domain-name-text");
+      if (domainResult) {
+        clearInterval(intervalHandler);
+        let domainResultStr = domainResult.innerText || "";
+        domainResultStr = domainResultStr.split("is") || [];
+        let data = {
+          domain: domainResultStr[0],
+          available: false,
+        };
+        if (domainResultStr[1] == " available") {
+          data.available = true;
+          data.price = document.querySelector('.price-block .ds-dpp-price').innerText&&document.querySelector(".price-block .ds-dpp-price").innerText;
+        }
+        // send data back to AS
+        resolve({
+          url: window.location.href,
+          data: {
+            contentType: "JSON",
+            content: data,
+          },
+        });
+      }
+    }, 1 * 1000);
+  } catch (err) {
+    reject(intelligence);
+  }
+}
+
+function functionEstimatedValue(resolve, reject, intelligence, axios) {
+  try {
+    let intervalHandler = setInterval(() => {
+      let domainResult = document.querySelector("span.dpp-price.price");
+      if (domainResult) {
+        clearInterval(intervalHandler);
+        // let domain = document.querySelector(
+        //   ".exact-domain-result .d-block.wrap-text"
+        // ).innerText;
+        let estimatedValue = domainResult.innerText || "";
+        let data = {
+          domain: intelligence.metadata.domain,
+          price: intelligence.metadata.price,
+          value: estimatedValue,
+        };
+        // send data back to AS
+        resolve({
+          url: window.location.href,
+          data: {
+            contentType: "JSON",
+            content: data,
+          },
+        });
+      }
+    }, 1 * 1000);
+  } catch (err) {
+    reject(intelligence);
+  }
+}
+
 /* Analyst Service - GET /apis/intelligences/init */
 router.get("/init", function (req, res, next) {
   let needCollectIntelligences = [];
-  const words = txtToJSON({
-    filePath: path.join(__dirname, "./words-3000.txt"),
-  });
+  const words = txtToJSON({ filePath: path.join(__dirname, "./words-3000.txt") });
   words.forEach((word) => {
     word = word[Object.keys(word)[0]];
     console.log(word);
     needCollectIntelligences.push(
       generateIntelligence(
-        `https://www.godaddy.com/domainfind/v1/search/exact?q=${_.trim(
-          word
-        )}.com&key=dpp_search&req_id=${Date.now()}`,
-        1
+        `https://www.godaddy.com/domainsearch/find?segment=repeat&isc=cjc1off30&checkAvail=1&tmskey=&domainToCheck=bit${_.trim(word)}.com`,
+        1,
+        {
+          script: functionCode.toString(),
+          type: "queryAvailable",
+        }
       )
     );
     needCollectIntelligences.push(
       generateIntelligence(
-        `https://www.godaddy.com/domainfind/v1/search/exact?q=${_.trim(
-          word
-        )}.ai&key=dpp_search&req_id=${Date.now()}`,
-        1
-      )
-    );
-    needCollectIntelligences.push(
-      generateIntelligence(
-        `https://www.godaddy.com/domainfind/v1/search/exact?q=${_.trim(
-          word
-        )}.io&key=dpp_search&req_id=${Date.now()}`,
-        1
+        `https://www.godaddy.com/domainsearch/find?segment=repeat&isc=cjc1off30&checkAvail=1&tmskey=&domainToCheck=bit${_.trim(word)}.ai`,
+        1,
+        {
+          script: functionCode.toString(),
+          type: "queryAvailable",
+        }
       )
     );
   });
@@ -112,7 +167,7 @@ router.get("/init", function (req, res, next) {
   }, 5 * 1000);
 
   res.json({
-    total: words.length * 3,
+    total: words.length * 2,
   });
 });
 
@@ -127,19 +182,25 @@ router.post("/", function (req, res, next) {
     let collectedData = [];
 
     for (let i = 0; i < collectedIntelligences.length; i++) {
-      let data = _.get(collectedIntelligences[i], "dataset.data.content");
-      if (
-        _.toLower(_.get(data, "ExactMatchDomain.AvailabilityStatus")) !=
-          "1001" &&
-        _.toLower(_.get(data, "ExactMatchDomain.AvailabilityStatus")) != "1002"
-        && _.get(data, "ExactMatchDomain.Valuation.Reasons")
-      ) {
-        collectedData.push({
-          domain: _.get(data, "ExactMatchDomain.Fqdn"),
-          price: _.get(data, "ExactMatchDomain.Price") || _.get(data, "ExactMatchDomain.SolutionSets[0].CurrentPrice"),
-          value: _.get(data, "ExactMatchDomain.Valuation.Prices.GoValue"),
-          reasons: _.get(data, "ExactMatchDomain.Valuation.Reasons"),
-        });
+      let item = collectedIntelligences[i];
+
+      if (item.metadata.type === "queryAvailable") {
+        let data = item.dataset.data.content;
+        if (data.available) {
+          needCollectIntelligences.push(
+            generateIntelligence(
+              `https://www.godaddy.com/domain-value-appraisal/appraisal/?isc=goodba003&checkAvail=1&tmskey=&domainToCheck=${_.trim(data.domain)}`,
+              2,
+              {
+                script: functionEstimatedValue.toString(),
+                domain: _.trim(data.domain),
+                price: _.trim(data.price),
+              }
+            )
+          );
+        }
+      } else {
+        collectedData.push(item.dataset.data.content);
       }
     }
     //------------------------------------------------------------------------------------------
