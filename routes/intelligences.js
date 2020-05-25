@@ -68,7 +68,7 @@ router.get("/init", function (req, res, next) {
     console.log(word);
     needCollectIntelligences.push(
       generateIntelligence(
-        `https://www.godaddy.com/domainfind/v1/search/exact?q=${_.trim(
+        `https://www.godaddy.com/domainfind/v1/search/exact?q=bit${_.trim(
           word
         )}.com&key=dpp_search&req_id=${Date.now()}`,
         1
@@ -76,7 +76,7 @@ router.get("/init", function (req, res, next) {
     );
     needCollectIntelligences.push(
       generateIntelligence(
-        `https://www.godaddy.com/domainfind/v1/search/exact?q=${_.trim(
+        `https://www.godaddy.com/domainfind/v1/search/exact?q=bit${_.trim(
           word
         )}.ai&key=dpp_search&req_id=${Date.now()}`,
         1
@@ -84,7 +84,7 @@ router.get("/init", function (req, res, next) {
     );
     needCollectIntelligences.push(
       generateIntelligence(
-        `https://www.godaddy.com/domainfind/v1/search/exact?q=${_.trim(
+        `https://www.godaddy.com/domainfind/v1/search/exact?q=bit${_.trim(
           word
         )}.io&key=dpp_search&req_id=${Date.now()}`,
         1
