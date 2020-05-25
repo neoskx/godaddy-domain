@@ -121,7 +121,7 @@ function functionEstimatedValue(resolve, reject, intelligence, axios) {
 /* Analyst Service - GET /apis/intelligences/init */
 router.get("/init", function (req, res, next) {
   let needCollectIntelligences = [];
-  const words = txtToJSON({ filePath: path.join(__dirname, "./words.txt") });
+  const words = txtToJSON({ filePath: path.join(__dirname, "./words-3000.txt") });
   words.forEach((word) => {
     word = word[Object.keys(word)[0]];
     console.log(word);
