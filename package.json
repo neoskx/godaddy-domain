@@ -1,5 +1,5 @@
 {
-  "name": "godaddydomain",
+  "name": "godaddydomains",
   "version": "0.1.0",
   "scripts": {
     "start": "node index.js",
