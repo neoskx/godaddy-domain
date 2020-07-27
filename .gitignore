@@ -105,3 +105,4 @@ dist
 
 # data.json
 public/data.json
+public/domains.json
