@@ -120,8 +120,10 @@ binary-extensions@^2.0.0:
   resolved "https://registry.yarnpkg.com/binary-extensions/-/binary-extensions-2.1.0.tgz#30fa40c9e7fe07dbc895678cd287024dea241dd9"
   integrity sha512-1Yj8h9Q+QDF5FzhMs/c9+6UntbD5MkRfRwac8DoEm9ZfUBZ7tZ55YcGVAzEe4bXsdQHEk+s9S5wsOKVdZrw0tQ==
 
-"bitspider-retailer-sdk@file:../bitspider-retailer-sdk":
-  version "0.3.0"
+bitspider-retailer-sdk@0.4.0:
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/bitspider-retailer-sdk/-/bitspider-retailer-sdk-0.4.0.tgz#19768b89c926ce2f56d87466995feda61a46a4d9"
+  integrity sha512-hv6YSy/FNdL2ZCRMJYfC7haen77C74CnPWKjUi/RUAFI0wXwbvNE5Ok7+0BC2T0QIJ4ZW9+Zo7akOB/Ii2Fa5g==
   dependencies:
     axios "0.19.2"
     cheerio "1.0.0-rc.3"
