@@ -15,7 +15,7 @@
     "MUNEW_BASE_URL": {
       "description": "Your Munew Application's base url. Example: https://munew.herokuapp.com"
     },
-    "AS_GLOBAL_ID": {
+    "GLOBAL_ID": {
       "description": "Your Analyst Application Global ID. https://docs.munew.io/how-tos/how-to-set-an-analyst-service-global_id"
     }
   },
