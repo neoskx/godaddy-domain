@@ -6,7 +6,7 @@ const _ = require("lodash");
 const triggerFun = async function trigger() {
   let tasks = [];
   const words = txtToJSON({
-    filePath: path.join(__dirname, "./words/words-3000.txt"),
+    filePath: path.join(__dirname, "./words/words-58000.txt"),
   });
   words.forEach((word) => {
     word = word[Object.keys(word)[0]];
@@ -48,7 +48,7 @@ const parseFun = async function parse({ req, res }) {
     const tasks = [];
     // Data store to disk
     const storeData = [];
-
+    let response;
     for (let i = 0; i < body.length; i++) {
       let data = _.get(body[i], "dataset.data.content");
       if (
@@ -66,15 +66,29 @@ const parseFun = async function parse({ req, res }) {
           value: _.get(data, "ExactMatchDomain.Valuation.Prices.GoValue"),
           reasons: _.get(data, "ExactMatchDomain.Valuation.Reasons"),
         });
+      } else {
+        // collect data fail
+        response = {
+          status: 500,
+          data: body,
+        };
+        break;
       }
     }
 
-    return {
+    const parseResult = {
       data: storeData,
       tasks,
     };
+    if (response) {
+      parseResult.response = response;
+    }
+    return parseResult;
   } catch (err) {
-    console.log(`parse error: ${err.message}`);
+    // console.log(`parse error: ${err.message}`);
+    baseRetailerService.logger.error(`parse error: ${err.message}`, {
+      error: err,
+    });
   }
 };
 

@@ -17,6 +17,14 @@
     },
     "GLOBAL_ID": {
       "description": "Your Analyst Application Global ID. https://docs.munew.io/how-tos/how-to-set-an-analyst-service-global_id"
+    },
+    "CONNECTOR_TYPE": {
+      "description": "Where you want to store your data. Default is 'json'. You can change to 'mongodb', and you need to provide a MongoDB connection information",
+      "required": false
+    },
+    "MONGODB_URL": {
+      "description": "MongoDB connection URL, example: mongodb://username@password.mlab.com:47987/retailer",
+      "required": false
     }
   },
   "success_url": "/",
