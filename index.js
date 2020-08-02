@@ -51,12 +51,22 @@ const parseFun = async function parse({ req, res }) {
     let response;
     for (let i = 0; i < body.length; i++) {
       let data = _.get(body[i], "dataset.data.content");
+      if(_.get(data, "ExactMatchDomain.AvailabilityStatus")){
+        // if don't have this value, means the data collect maybe has issue
+        response = {
+          status: 400,
+          data: {
+            tasks: body,
+            message: "ExactMatchDomain.AvailabilityStatus doesn't exist, this means we didn't get correct data"
+          },
+        };
+        break;
+      }
       if (
         _.toLower(_.get(data, "ExactMatchDomain.AvailabilityStatus")) !=
           "1001" &&
         _.toLower(_.get(data, "ExactMatchDomain.AvailabilityStatus")) !=
-          "1002" &&
-        _.get(data, "ExactMatchDomain.Valuation.Reasons")
+          "1002"
       ) {
         storeData.push({
           domain: _.get(data, "ExactMatchDomain.Fqdn"),
@@ -66,13 +76,6 @@ const parseFun = async function parse({ req, res }) {
           value: _.get(data, "ExactMatchDomain.Valuation.Prices.GoValue"),
           reasons: _.get(data, "ExactMatchDomain.Valuation.Reasons"),
         });
-      } else {
-        // collect data fail
-        response = {
-          status: 500,
-          data: body,
-        };
-        break;
       }
     }
 
