@@ -51,7 +51,7 @@ const parseFun = async function parse({ req, res }) {
     let response;
     for (let i = 0; i < body.length; i++) {
       let data = _.get(body[i], "dataset.data.content");
-      if(_.get(data, "ExactMatchDomain.AvailabilityStatus")){
+      if(!_.get(data, "ExactMatchDomain.AvailabilityStatus")){
         // if don't have this value, means the data collect maybe has issue
         response = {
           status: 400,
